@@ -1,0 +1,8 @@
+
+sites:
+    - name: "36kr"
+      feed: "http://www.36kr.com/feed"
+    - name: "huxiu"
+      feed: "http://www.huxiu.com/rss/0.xml"
+    - name: "ifanr"
+      feed: "http://www.ifanr.com/feed"
