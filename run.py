@@ -29,10 +29,10 @@ scheduler = BlockingScheduler()
 
 now = datetime.datetime.utcnow()
 now = now + datetime.timedelta(seconds=10)
-scheduler.add_job(hackernews_run,'interval', minutes=6,  id='hackernews', next_run_time=now)
-scheduler.add_job(producthunt_run,'interval', minutes=6,  id='producthunt', next_run_time=now)
-scheduler.add_job(designernews_run,'interval', minutes=6,  id='designernews', next_run_time=now)
-scheduler.add_job(rss_run,'interval', minutes=6,  id='rssfeed', next_run_time=now)
+scheduler.add_job(hackernews_run,'interval', minutes=10,  id='hackernews', next_run_time=now)
+scheduler.add_job(producthunt_run,'interval', minutes=10,  id='producthunt', next_run_time=now)
+scheduler.add_job(designernews_run,'interval', minutes=10,  id='designernews', next_run_time=now)
+scheduler.add_job(rss_run,'interval', minutes=10,  id='rssfeed', next_run_time=now)
 
 scheduler.start()
 
