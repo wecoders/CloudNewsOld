@@ -8,7 +8,7 @@ import time
 
 from news import delete_news,save_news, save_cache, update_sites,reset_news
 
-from .fetch import fetch
+from httpfetch import fetch
 
 site_url = 'https://api.producthunt.com/v1/posts'
 

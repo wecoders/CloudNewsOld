@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import time
 import logging
 from scrapy import Selector
-from .fetch import fetch
+from httpfetch import fetch
 from news import session, delete_news,save_news,save_cache, update_sites,reset_news
 
 hackernews_url = 'https://news.ycombinator.com/news'

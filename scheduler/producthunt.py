@@ -4,7 +4,7 @@ import json
 import requests
 import re
 from scrapy import Selector
-from .fetch import fetch
+from httpfetch import fetch
 from datetime import datetime
 from news import session, delete_news,save_news, save_cache, update_sites
 

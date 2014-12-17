@@ -3,6 +3,8 @@ import feedparser
 import re
 import time
 import calendar
+import logging
+logger = logging.getLogger("rssfeed.log")
 from datetime import datetime
 
 from news import session, delete_news,save_news,save_cache, update_sites,reset_news
@@ -13,7 +15,7 @@ import pytz
 tz = pytz.timezone('Asia/Shanghai')
 
 def fetch_feed(site, url, id_pattern=None):
-	print "fetch %s"%site
+	logger.debug("fetch %s"%site)
 	feed = feedparser.parse(url)
 	news_list = []
 	for entry in feed['entries']:
@@ -48,12 +50,16 @@ def fetch_feed(site, url, id_pattern=None):
 	update_sites(site, datetime.now())
 
 def run():
+	logger.info("run feed new: %s"%datetime.now())
 	config = load_config("rss.yaml")
 	for site in config.sites:
 		try:
 			fetch_feed(site.name, site.feed)	
 		except Exception, e:
-			print e
+			logger.error(e)
 
 
+
+if __name__ == "__main__":
+	run()
 

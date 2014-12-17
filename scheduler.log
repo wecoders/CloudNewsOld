@@ -2550,3 +2550,45 @@ DEBUG:140735319175936:fetch from url: https://api.producthunt.com/v1/posts?day=2
 INFO:140735319175936:Starting new HTTPS connection (1): api.producthunt.com
 DEBUG:140735319175936:"GET /v1/posts?day=2014-11-16 HTTP/1.1" 200 None
 DEBUG:140735319175936:fetch count: 13 from https://api.producthunt.com/v1/posts?day=2014-11-16
+2014-12-17 10:12:24,927:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2014-12-17 10:12:24,928:INFO:140735193809664:Added job "run_rss" to job store "default"
+2014-12-17 10:12:24,928:INFO:140735193809664:Scheduler started
+2014-12-17 10:12:24,928:DEBUG:140735193809664:Looking for jobs to run
+2014-12-17 10:12:24,929:WARNING:4340916224:Run time of job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 02:12:34 CST)" was missed by 0:09:50.004420
+2014-12-17 10:12:24,929:DEBUG:140735193809664:Next wakeup is due at 2014-12-17 10:12:34.924977+08:00 (in 9.996417 seconds)
+2014-12-17 10:12:34,929:DEBUG:140735193809664:Looking for jobs to run
+2014-12-17 10:12:34,939:INFO:4340916224:Running job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 10:12:34 CST)" (scheduled at 2014-12-17 10:12:34.924977+08:00)
+2014-12-17 10:12:34,940:DEBUG:140735193809664:Next wakeup is due at 2014-12-17 10:22:34.924977+08:00 (in 599.995779 seconds)
+2014-12-17 10:12:34,940:ERROR:4340916224:Job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 10:22:34 CST)" raised an exception
+Traceback (most recent call last):
+  File "/Library/Python/2.7/site-packages/APScheduler-3.0.1-py2.7.egg/apscheduler/executors/base.py", line 108, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "run.py", line 28, in run_rss
+    os.sys("python scheduler/rssfeed.py")
+TypeError: 'module' object is not callable
+2014-12-17 10:13:47,725:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2014-12-17 10:13:47,725:INFO:140735193809664:Added job "run_rss" to job store "default"
+2014-12-17 10:13:47,725:INFO:140735193809664:Scheduler started
+2014-12-17 10:13:47,725:DEBUG:140735193809664:Looking for jobs to run
+2014-12-17 10:13:47,726:WARNING:4424753152:Run time of job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 02:13:57 CST)" was missed by 0:09:50.002526
+2014-12-17 10:13:47,726:DEBUG:140735193809664:Next wakeup is due at 2014-12-17 10:13:57.723889+08:00 (in 9.998180 seconds)
+2014-12-17 10:14:52,774:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2014-12-17 10:14:52,775:INFO:140735193809664:Added job "run_rss" to job store "default"
+2014-12-17 10:14:52,775:INFO:140735193809664:Scheduler started
+2014-12-17 10:14:52,775:DEBUG:140735193809664:Looking for jobs to run
+2014-12-17 10:14:52,776:WARNING:4404633600:Run time of job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 02:15:02 CST)" was missed by 0:09:50.002724
+2014-12-17 10:14:52,776:DEBUG:140735193809664:Next wakeup is due at 2014-12-17 10:15:02.773474+08:00 (in 9.998063 seconds)
+2014-12-17 10:15:02,776:DEBUG:140735193809664:Looking for jobs to run
+2014-12-17 10:15:02,776:INFO:4404633600:Running job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 10:15:02 CST)" (scheduled at 2014-12-17 10:15:02.773474+08:00)
+2014-12-17 10:15:02,777:DEBUG:140735193809664:Next wakeup is due at 2014-12-17 10:25:02.773474+08:00 (in 599.997011 seconds)
+2014-12-17 10:15:02,778:ERROR:4404633600:Job "run_rss (trigger: interval[0:10:00], next run at: 2014-12-17 10:25:02 CST)" raised an exception
+Traceback (most recent call last):
+  File "/Library/Python/2.7/site-packages/APScheduler-3.0.1-py2.7.egg/apscheduler/executors/base.py", line 108, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "run.py", line 28, in run_rss
+    os.sys("python scheduler/rssfeed.py")
+TypeError: 'module' object is not callable
+2014-12-17 10:20:53,824:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2014-12-17 10:21:20,159:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2014-12-17 10:22:45,890:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2014-12-17 10:32:46,683:INFO:140735193809664:Adding job tentatively -- it will be properly scheduled when the scheduler starts

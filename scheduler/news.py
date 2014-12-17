@@ -2,6 +2,8 @@
 import json
 import redis
 import time
+import logging
+
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -102,17 +104,17 @@ def save_cache(site, news_list):
 	client.set(key, size)
 
 def update_sites(name, now=None):
-	print "update sites"
+	print "update sites %s" % name
 	if now is None:
 		now = datetime.now()
 	db = session()
 	news_site = db.query(NewsSite).filter_by(uri=name).first()
 	if news_site:
-		print "site time: ", news_site.name, now
+		logging.debug("site time: %s, %s" % ( news_site.uri, now))
 		news_site.create_at = now
 		db.add(news_site)
 		db.commit()
 		db.close()
 	else:
-		print "update site error, site is None !!!"
+		logging.error("update site error, site (%s) is None !!!" % name)
 
