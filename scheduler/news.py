@@ -12,7 +12,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, DateTime, String, Integer, ForeignKey, func
 from sqlalchemy.orm import relationship, backref
 import settings
-
+from utils import simple_escape
 
 engine = create_engine(settings.database)
 
@@ -72,8 +72,8 @@ def save_news(site,news_list, page=None):
 			news = News()
 
 		news.site = item['site']
-		news.title = item['title']
-		news.sub_title = item.get('subTitle')
+		news.title = simple_escape(item['title'])
+		news.sub_title = simple_escape(item.get('subTitle'))
 		news.source_url = item['sourceUrl']
 		news.url = item['url']
 		news.vote_count = item['voteCount']
