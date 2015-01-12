@@ -4,10 +4,11 @@ import re
 import time
 import calendar
 import logging
-logger = logging.getLogger("rssfeed.log")
+logging.basicConfig(filename="scheduler.log", format='%(asctime)s:%(levelname)s:%(thread)d:%(message)s', level=logging.DEBUG)
+
 from datetime import datetime
 
-from news import session, delete_news,save_news,save_cache, update_sites,reset_news
+from news import session, delete_news,save_news,save_cache, update_sites,reset_news, find_rss_sites
 
 from settings import load_config
 import pytz
@@ -15,7 +16,7 @@ import pytz
 tz = pytz.timezone('Asia/Shanghai')
 
 def fetch_feed(site, url, id_pattern=None):
-	logger.debug("fetch %s"%site)
+	logging.debug("fetch %s"%site)
 	feed = feedparser.parse(url)
 	news_list = []
 	for entry in feed['entries']:
@@ -50,13 +51,15 @@ def fetch_feed(site, url, id_pattern=None):
 	update_sites(site, datetime.now())
 
 def run():
-	logger.info("run feed new: %s"%datetime.now())
-	config = load_config("rss.yaml")
-	for site in config.sites:
+	logging.info("run feed new: %s"%datetime.now())
+	# config = load_config("rss.yaml")
+	sites = find_rss_sites()
+	logging.info(sites)
+	for site in sites:
 		try:
-			fetch_feed(site.name, site.feed)	
+			fetch_feed(site.uri, site.feed_url)	
 		except Exception, e:
-			logger.error(e)
+			logging.error(e)
 
 
 

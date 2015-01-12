@@ -32,6 +32,9 @@ class NewsSite(Base):
     uri = Column(String)
     name = Column(String)
     sorts = Column(Integer)
+    status = Column(Integer)
+    feed_type = Column(String)
+    feed_url = Column(String)
     create_at = Column(DateTime)
 
 
@@ -48,6 +51,11 @@ class News(Base):
     comment_count = Column(Integer)
     sorts = Column(Integer)
     create_at = Column(DateTime)
+
+def find_rss_sites():
+	db = session()
+	sites = db.query(NewsSite).filter_by(feed_type='rss', status=1).all()
+	return sites
 
 def delete_news(site_id):
 	db = session()
