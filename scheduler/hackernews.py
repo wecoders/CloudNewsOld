@@ -61,8 +61,8 @@ def fetch_news(url, news_list):
 		else:
 			points = 0
 
-		if len(comments)>1:
-			m = re.findall('(\d+)', comments[1])
+		if len(comments)>=3:
+			m = re.findall('(\d+)', comments[2])
 			if len(m)>0:
 				comments = m[0]
 			else:
