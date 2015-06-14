@@ -27,9 +27,8 @@ def every(cron=[]):
     cron = ["* * * * *", "* * */10 * 2"]
     """
     def wrapper(func):
-        
-        func.is_cronjob = True
-        func.crons = []
+        func._is_cronjob = True
+        func._crons = []
         for c in cron:
             if isinstance(c, str):
                 cols = c.split(' ')
@@ -45,7 +44,7 @@ def every(cron=[]):
                     week = None
 
                 cfg = CronConfig(m,h,d,month,week)
-                func.crons.append(cfg)
+                func._crons.append(cfg)
         return func
     return wrapper
 
