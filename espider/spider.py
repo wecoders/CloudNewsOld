@@ -5,6 +5,9 @@ import time
 from .cron import every
 from .utils import md5string
 
+from espider.db.model import SpiderScheduler
+from espider.db import Session
+
 class EasySpider:
     def __init__(self, project_cfg):
         self.project = project_cfg.get('project', 'unknown')
@@ -77,17 +80,55 @@ class EasySpider:
         # pass
 
     def _add_scheduler(self, scheduler_cfg):
-        pass
+        project = scheduler_cfg['project']
+        task_id = 'data://%s/%s' % (scheduler_cfg['project'], scheduler_cfg['func'])
+        url = 'data://%s' % (scheduler_cfg['func'])
+        crontab = json.dumps(scheduler_cfg.get('crontab', []))
+        next_time = int(time.time())
+        
+        scheduler = SpiderScheduler()
+        scheduler.project = project
+        scheduler.task_id = task_id
+        scheduler.url = url
+        scheduler.process = json.dumps({'callback':scheduler_cfg['func'], 'crontab':crontab})
+        scheduler.next_time = next_time
+        scheduler.last_time = next_time
+        session.add(scheduler)
+        session.commit()
+
 
     def _add_task(self, task_cfg):
+        project = task_cfg['project']
+        task_id = task_cfg['task_id']
+        url = task_cfg['url']
+        crontab = json.dumps(scheduler_cfg.get('crontab', '[]'))
+        last_time = int(time.time())
+        age = int(task_cfg.get('age', 10*365*24*60*60)) #10years
+        next_time = last_time+int(age)
+        priority = task_cfg.get('priority', 0)
+        callback = task_cfg.get('callback', None)
+
+        task = SpiderTask()
+        task.project = project
+        task.task_id = task_id
+        task.url = url
+        task.callback = callback
+        task.next_time = last_time
+        task.last_time = last_time
+        task.priority = priority
+        task.process = json.dumps({'callback':scheduler_cfg['func']})
+        session.add(task)
+        session.commit()
+
+
         pass
 
-    def fetch(self, url, **kwargs): #callback, url_type=None):
+    def fetch(self, url, callback=None, **kwargs)::
         task_id = md5string(url)
         task_cfg = {}
+        task_cfg['task_id'] = task_id
 
-        if kwargs.get('callback'):
-            callback = kwargs['callback']
+        if callback is not None:
             task_cfg['callback'] = getattr(callback, '__name__')
             if hasattr(callback, '_cfg'):
                 cfg = callback._cfg
@@ -96,24 +137,16 @@ class EasySpider:
                 if 'priority' in cfg:
                     task_cfg['priority'] = cfg['priority']
 
-        if kwargs.get('url_type'):
-            task_cfg['url_type'] = kwargs['url_type']
-
         self._add_task(task_cfg)
         
     def _run_task(self, response, task_cfg):
-        # task_id = md5string(task_cfg['url'])
         func = getattr(self, task_cfg.get('callback', '__call__'))
-        # headers = task_cfg.get('headers', {})
-        # response = self._fetch_url(url, headers)
         return self._run_callback(func, response, task_cfg)
 
     def _run_callback(self, func, *arguments):
         args, varargs, keywords, defaults = inspect.getargspec(function)
         return function(*arguments[:len(args) - 1])
 
-    #def index_page(self, response):
-        #self.fetch('some-url2', callback=self.detail_page)
 
 
 
