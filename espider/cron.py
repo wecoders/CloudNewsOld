@@ -221,5 +221,22 @@ class CronTab(object):
 
 
 
+class CronJob(object):
+    def __init__(self, crons=[]):
+        self.crons = crons
+        self.crontabs = []
+        for cron in crons:
+            crontab = CronTab(cron)
+            self.crontabs.append(crontab)
 
+    def next(self, now):
+        if len(self.crontabs)<=0:
+            return 0
+        first_time = 2147483647
+        for crontab in self.crontabs:
+            next_time = crontab.next(now)
+            if first_time < next_time:
+                first_time = next_time
+
+        return first_time
         

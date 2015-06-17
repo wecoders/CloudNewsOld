@@ -3,7 +3,7 @@
 import time
 
 from .cron import every
-from .utils import md5string
+from .utils import md5str
 
 from espider.db.model import SpiderScheduler
 from espider.db import Session
@@ -11,7 +11,7 @@ from espider.db import Session
 class EasySpider:
     def __init__(self, project_cfg):
         self.project = project_cfg.get('project', 'unknown')
-        
+        self.headers = {}
         self._tasks = {}
         
         # self.site_id = site.settings.site_id
@@ -124,7 +124,7 @@ class EasySpider:
         pass
 
     def fetch(self, url, callback=None, **kwargs)::
-        task_id = md5string(url)
+        task_id = md5str(url)
         task_cfg = {}
         task_cfg['task_id'] = task_id
 
