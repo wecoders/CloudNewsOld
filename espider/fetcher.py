@@ -3,7 +3,7 @@
 
 
 import requests
-import chardet
+#import chardet
 from pyquery import PyQuery
 
 
@@ -11,9 +11,10 @@ def monkey_patch():
     prop = requests.models.Response.content
     def content(self):
         _content = prop.fget(self)
-        apparent_encoding = chardet.detect(_content)['encoding']
-        if apparent_encoding is None:
-            apparent_encoding = 'UTF-8'
+        #apparent_encoding = chardet.detect(_content)['encoding']
+        #if apparent_encoding is None:
+            
+        apparent_encoding = 'UTF-8'
         logging.debug("encoding %s, %s, %s" % (self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content)))
         if self.encoding == 'ISO-8859-1': # or self.encoding == 'gbk':
             encodings = requests.utils.get_encodings_from_content(_content)
@@ -85,7 +86,7 @@ class Fetcher(object):
             logging.debug("Download end ======== [%s]" % url)
             return result
 
-        except Exception, e:
+        except Exception as e:
             logging.error("url:%s, %s" % (url,e))
             return dict(code=-1)
 

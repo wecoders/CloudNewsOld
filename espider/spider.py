@@ -9,8 +9,8 @@ from espider.db.model import SpiderScheduler
 from espider.db import Session
 
 class EasySpider:
-    def __init__(self, project_cfg):
-        self.project = project_cfg.get('project', 'unknown')
+    def __init__(self):
+        self.project = 'unknown'
         self.headers = {}
         self._tasks = {}
         
