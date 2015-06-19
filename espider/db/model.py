@@ -13,7 +13,7 @@ from .mysql import Session
 class BaseMixin():
     query =  Session.query_property()
 
-Base = declarative_base(cls=BaseMixin)
+Base = declarative_base()
 
 class SpiderProject(Base):
     __tablename__ = 'spider_project'

@@ -49,6 +49,7 @@ def import_object(name, arg=None):
         return __import__(name)
     parts = name.split('.')
     #try:
+    print('.'.join(parts[:-1]))
     obj = __import__('.'.join(parts[:-1]), None, None, [parts[-1]], 0)
     #except ImportError:
     #    obj = None

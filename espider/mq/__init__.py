@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/env python
 
+from .gevent_queue import GeventQueue
+from .redis_queue import RedisQueue
 
 def build_queue(qtype, **kwargs):
     if qtype == "redis":
@@ -8,11 +10,11 @@ def build_queue(qtype, **kwargs):
     else:
         return build_gevent_queue(**kwargs)
 
-def build_gevent_queue(basesize=0):
+def build_gevent_queue(qsize=0):
     from gevent_queue import GeventQueue
-    return GeventQueue(basesize)
+    return GeventQueue(qsize)
 
-def build_redis_queue(qname, host='localhost', port=6379, db=0):
-    from gevent_queue import GeventQueue
-    return GeventQueue(qname,host,port,db)
+def build_redis_queue(qname="redisq", host='localhost', port=6379, db=0):
+    from redis_queue import RedisQueue
+    return RedisQueue(qname,host,port,db)
 

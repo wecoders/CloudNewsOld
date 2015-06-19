@@ -123,7 +123,7 @@ class EasySpider:
 
         pass
 
-    def fetch(self, url, callback=None, **kwargs)::
+    def fetch(self, url, callback=None, **kwargs):
         task_id = md5str(url)
         task_cfg = {}
         task_cfg['task_id'] = task_id

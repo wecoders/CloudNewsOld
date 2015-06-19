@@ -4,13 +4,14 @@ import gevent
 from gevent import monkey, queue
 
 # monkey.patch_all()
+import os
 import json
-
-from .utils import merge_cookie
+import time
+from .utils import merge_cookie, import_object
 from .mq import build_queue
 from .fetcher import Fetcher
 from .config import import_config
-from .db import SpiderProject, SpiderTask, SpiderScheduler
+from .db import Session, SpiderProject, SpiderTask, SpiderScheduler
 
 class EasyCrawler:
     def __init__(self, timeout=5, workers_count=5, min_capacity=10, pipeline_size=100, loop_once=False):
@@ -40,10 +41,10 @@ class EasyCrawler:
         for project in self.projects:
             try:
                 spider = import_object("projects.%s.spider.Spider"% (project.name))
-                config = import_config("projects.%s.project.yaml" % (project.name))
+                config = import_config("projects/%s/project.yaml" % (project.name))
                 spider.config = config
                 self.spiders[project.name] = spider
-                self.taskqs[project.name] = build_queue("redis", "task_"+project.name)
+                self.taskqs[project.name] = build_queue("reqis", qname="q_"+project.name)
             except Exception as e:
                 raise e
             
