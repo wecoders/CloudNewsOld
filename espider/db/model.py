@@ -8,12 +8,12 @@ from sqlalchemy import Column, DateTime, String, Integer, ForeignKey, func
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
  
-from .mysql import Session
+from .mysql import Session, ScopedSession
 
-class BaseMixin():
-    query =  Session.query_property()
+class BaseClass(object):
+    query =  ScopedSession.query_property()
 
-Base = declarative_base()
+Base = declarative_base(cls=BaseClass)
 
 class SpiderProject(Base):
     __tablename__ = 'spider_project'
@@ -22,11 +22,12 @@ class SpiderProject(Base):
     status = Column(Integer)
     process = Column(String)
     create_at = Column(DateTime, default=datetime.datetime.now())
+    # query =  ScopedSession.query_property()
 
     @classmethod
     def load_projects(cls):
-        db = Session()
-        projects = db.query(SpiderProject).filter(SpiderProject.status==1).all()
+        # db = Session()
+        projects = SpiderProject.query.filter(SpiderProject.name=='douban').all()
         return projects
 
 class SpiderTask(Base):
@@ -66,7 +67,7 @@ class SpiderTask(Base):
 Task = SpiderTask
 
 
-class SpiderScheduler(Base, BaseMixin):
+class SpiderScheduler(Base):
     __tablename__ = 'spider_scheduler'
     id = Column(Integer, primary_key=True)
     project = Column(String)
@@ -78,7 +79,7 @@ class SpiderScheduler(Base, BaseMixin):
     create_at = Column(DateTime, default=datetime.datetime.now())
 
 
-class SpiderResult(Base, BaseMixin):
+class SpiderResult(Base):
     __tablename__ = 'spider_result'
     id = Column(Integer, primary_key=True)
     project = Column(String)

@@ -53,5 +53,7 @@ def import_object(name, arg=None):
     obj = __import__('.'.join(parts[:-1]), None, None, [parts[-1]], 0)
     #except ImportError:
     #    obj = None
-    return getattr(obj, parts[-1], arg)
+    o = getattr(obj, parts[-1], arg)
+    print(name, o, obj, o())
+    return o
 

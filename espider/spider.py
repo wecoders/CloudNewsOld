@@ -1,55 +1,22 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 import time
+import json
 
 from .cron import every
 from .utils import md5str
 
-from espider.db.model import SpiderScheduler
+from espider.db.model import SpiderScheduler, SpiderTask
 from espider.db import Session
 
-class EasySpider:
+class EasySpider(object):
     def __init__(self):
         self.project = 'unknown'
-        self.headers = {}
+        self.config = {}
         self._tasks = {}
         
         # self.site_id = site.settings.site_id
-        self.headers = site.settings.headers
-        self.settings = site.settings
-        
-        if self.settings.page.parser:
-            self.page_rules = self.settings.page.rules
-            for page_rule in self.page_rules:
-                #print type(page_rule), page_rule
-                rule = page_rule.rule.strip()
-                r = re.compile(rule)
-                page_rule.re = r
-        else:
-            self.page_rules = []
-
-
-        self.target_rules = self.settings.target.rules
-        for target_rule in self.target_rules:
-            rule = target_rule.rule.strip()
-            #print rule
-            r = re.compile(rule)
-            target_rule.re = r
-
-        self.target_parser = self.settings.target.parser
-        self.page_parser = self.settings.page.parser
-               
- 
-        if self.settings.debug is None or not self.settings.debug:
-            self.debug = False
-        else:
-            self.debug = True
-
-
-        if self.settings.sleep_second:
-            self.sleep_second = float(self.settings.sleep_second)
-        else:
-            self.sleep_second = 0
+        # XWA`
 
     def _on_start(self):
         if hasattr(self, 'on_start'):
@@ -61,7 +28,7 @@ class EasySpider:
                     crons = getattr(func, '_crons')
                     self.crons = crons
             scheduler_cfg = {}
-            scheduler_cfg['func'] = 'on_start'
+            scheduler_cfg['callback'] = 'on_start'
             scheduler_cfg['project'] = self.project
             scheduler_cfg['spider'] = self.__name__
             kwargs = {}
@@ -81,8 +48,8 @@ class EasySpider:
 
     def _add_scheduler(self, scheduler_cfg):
         project = scheduler_cfg['project']
-        task_id = 'data://%s/%s' % (scheduler_cfg['project'], scheduler_cfg['func'])
-        url = 'data://%s' % (scheduler_cfg['func'])
+        url = 'data://%s/%s' % (scheduler_cfg['project'], scheduler_cfg['callback'])
+        task_id = md5str(url)
         crontab = json.dumps(scheduler_cfg.get('crontab', []))
         next_time = int(time.time())
         
@@ -90,7 +57,7 @@ class EasySpider:
         scheduler.project = project
         scheduler.task_id = task_id
         scheduler.url = url
-        scheduler.process = json.dumps({'callback':scheduler_cfg['func'], 'crontab':crontab})
+        scheduler.process = json.dumps({'callback':scheduler_cfg['callback'], 'crontab':crontab})
         scheduler.next_time = next_time
         scheduler.last_time = next_time
         session.add(scheduler)
@@ -101,7 +68,7 @@ class EasySpider:
         project = task_cfg['project']
         task_id = task_cfg['task_id']
         url = task_cfg['url']
-        crontab = json.dumps(scheduler_cfg.get('crontab', '[]'))
+        # crontab = json.dumps(task_cfg.get('crontab', '[]'))
         last_time = int(time.time())
         age = int(task_cfg.get('age', 10*365*24*60*60)) #10years
         next_time = last_time+int(age)
@@ -112,13 +79,17 @@ class EasySpider:
         task.project = project
         task.task_id = task_id
         task.url = url
-        task.callback = callback
+        # task.callback = callback
         task.next_time = last_time
         task.last_time = last_time
         task.priority = priority
-        task.process = json.dumps({'callback':scheduler_cfg['func']})
-        session.add(task)
-        session.commit()
+        task.status = 0
+        task.result = None
+        task.process = json.dumps({'callback':task_cfg.get('callback', ''), 'age': task_cfg.get('age', 7*24*60*60)})
+        db = Session()
+        db.add(task)
+        db.commit()
+        db.close()
 
 
         pass
@@ -127,7 +98,8 @@ class EasySpider:
         task_id = md5str(url)
         task_cfg = {}
         task_cfg['task_id'] = task_id
-
+        task_cfg['project'] = self.config.project
+        task_cfg['url'] = url
         if callback is not None:
             task_cfg['callback'] = getattr(callback, '__name__')
             if hasattr(callback, '_cfg'):

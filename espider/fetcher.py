@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
-
+import logging
 import requests
 #import chardet
 from pyquery import PyQuery
