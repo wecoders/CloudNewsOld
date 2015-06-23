@@ -12,6 +12,8 @@ class TestClass(object):
         
 
 def md5str(url):
+    if type(url) == str:
+        url = url.encode('utf-8')
     m = hashlib.md5()
     m.update(url.strip())
     urlmd5 = m.hexdigest()
@@ -35,10 +37,11 @@ def merge_cookie(new_cookie, old_cookie):
     cookie_headers = split_cookie(new_cookie)
 
     if old_cookie is None:
-        return "; ".join(['%s=%s'%(key,value) for (key,value) in cookie_header.items()])
+        return "; ".join(['%s=%s'%(key,value) for (key,value) in cookie_headers.items()])
     else:
         old_cookie_headers = split_cookie(old_cookie)
-        new_cookies = dict(old_cookie_headers.items()+cookie_headers.items())
+        new_cookies = dict(old_cookie_headers)
+        new_cookies.update(cookie_headers)# dict(old_cookie_headers.items()+cookie_headers.items())
         return "; ".join(['%s=%s'%(key,value) for (key,value) in new_cookies.items()])
 
 

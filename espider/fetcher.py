@@ -3,9 +3,10 @@
 
 import logging
 import requests
+import traceback
 #import chardet
 from pyquery import PyQuery
-
+from .config import Config
 
 def monkey_patch():
     prop = requests.models.Response.content
@@ -15,7 +16,8 @@ def monkey_patch():
         #if apparent_encoding is None:
             
         apparent_encoding = 'UTF-8'
-        logging.debug("encoding %s, %s, %s" % (self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content)))
+        print("encoding,",self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content))
+        # logging.debug("encoding %s, %s, %s" % (self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content)))
         if self.encoding == 'ISO-8859-1': # or self.encoding == 'gbk':
             encodings = requests.utils.get_encodings_from_content(_content)
 
@@ -30,7 +32,7 @@ def monkey_patch():
         return _content
     requests.models.Response.content = property(content)
 
-monkey_patch()
+# monkey_patch()
 
 
 class Fetcher(object):
@@ -45,16 +47,18 @@ class Fetcher(object):
         is_target = task.get('is_target')
 
         callback = None
-        if 'callback' in task:
-            callback = getattr(spider, task.get('callback'))
+        if 'process' in task:
+            callback = getattr(spider, task.get('process').get('callback', None))
         
         response = self._fetch(url, headers)
         if response.get('code') == 200 and callback is not None:
             res = callback(response)
             if res is not None:
+                response['result'] = res
+                
                 #save res
                 #insert into spider_result(task_id, url, result)
-                pass
+                # pass
                     
         if task.get('type', None) == 'task':
             pass
@@ -62,10 +66,10 @@ class Fetcher(object):
         return response
 
     def _fetch(self, url, headers={}, timeout=60, proxies=None):
-        logging.debug("start download ======== [%s], %s" % (url,type(url)))
+        logging.debug("Download start ======== [%s], %s" % (url,type(url)))
 
         try:
-            result = {}
+            result = Config()
             response = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
             logging.debug("requests response encoding =============== ************* %s" % response.encoding)
             if response.status_code != requests.codes.ok:
@@ -87,7 +91,7 @@ class Fetcher(object):
             return result
 
         except Exception as e:
-            logging.error("url:%s, %s" % (url,e))
+            logging.error("fetch url:%s error \n%s" % (url,traceback.format_exc()))
             return dict(code=-1)
 
         return dict(code=-1)

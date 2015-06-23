@@ -22,29 +22,33 @@ CRON_RANGES = [
 ]
 
 
-def every(cron=[]):
+def every(crontab=[]):
     """
-    cron = ["* * * * *", "* * */10 * 2"]
+    crontab = ["* * * * *", "* * */10 * 2"]
     """
     def wrapper(func):
         func._is_cronjob = True
         func._crons = []
-        for c in cron:
-            if isinstance(c, str):
-                cols = c.split(' ')
-                if len(cols) != 5:
-                    continue
-                m = cols[0]
-                h = cols[1]
-                d = cols[2]
-                month = cols[3]
-                week = cols[4]
-                if week == "*":
-                    #week优先
-                    week = None
 
-                cfg = CronConfig(m,h,d,month,week)
-                func._crons.append(cfg)
+        for c in crontab:
+            if isinstance(c, str):
+                func._crons.append(c)
+                
+                # cols = c.split(' ')
+                # if len(cols) != 5:
+                #     continue
+                # m = cols[0]
+                # h = cols[1]
+                # d = cols[2]
+                # month = cols[3]
+                # week = cols[4]
+                # if week == "*":
+                #     #week优先
+                #     week = None
+
+                # cfg = CronConfig(m,h,d,month,week)
+                # func._crons.append(cfg)
+        print("every wrapper ", func, func._is_cronjob, func._crons)
         return func
     return wrapper
 
