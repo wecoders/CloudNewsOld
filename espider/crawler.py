@@ -17,57 +17,116 @@ from .config import import_config, Config
 from .db import Session, ScopedSession, SpiderProject, SpiderTask, SpiderScheduler,SpiderResult
 
 
-
+OK=True
+START=1
+STOP=-1
 
 class EasyCrawler:
     def __init__(self, timeout=5, workers_count=5, min_capacity=10, pipeline_size=100, loop_once=False):
-        self.load_projects()
-        self.load_spiders()
+        
+        self.spiders = {}
+        self.queues = {}
+        self.projects = {}
+        self.jobs = {}
+
+        
         self.timeout = timeout
         self.loop_once = loop_once
-        self.qin = build_queue("redis")
+        self.qin = build_queue("redis", qname="command_q")
         # self.qout = build_queue("redis") 
-        self.jobs = [gevent.spawn(self.do_scheduler)]
-        self.jobs += [gevent.spawn(self.do_task)]
-        for project in self.projects:
-            self.jobs += [gevent.spawn(self.do_worker, project.name, self.spiders.get(project.name))]
+        self.jobs['scheduler'] = gevent.spawn(self.do_scheduler)
+        self.jobs['command'] = gevent.spawn(self.do_command)
+        self.jobs['loader'] = gevent.spawn(self.do_loader)
+        self.jobs['spiders'] = {}
+        self.load_spiders()
+        print("projects:",self.projects)
+        # for project in self.projects:
+        #     self.jobs += [gevent.spawn(self.do_worker, project.name, self.spiders.get(project.name))]
         # self.jobs += [gevent.spawn(self.do_worker) for i in range(workers_count)]
         # self.jobs += [gevent.spawn(self.do_pipeline)]
-        self.job_count = len(self.jobs)
+        # self.job_count = len(self.jobs)
         # self.lock = threading.Lock()
         self.fetcher = Fetcher()
         self.db = ScopedSession()
 
-    def load_projects(self):
-        projects =  SpiderProject.load_projects() #query.filter_by(status=1).all()
-        self.projects = []
-        now = time.time()
-        for project in projects:
-            prj = Config()
-            prj.name = project.name
-            prj.load_time = now
-            self.projects.append(prj)
-
     def load_spiders(self):
-        self.spiders = {}
-        self.taskqs = {}
-        for project in self.projects:
-            try:
-                Spider = import_object("projects.%s.spider.Spider"% (project.name))
-                config = import_config("projects/%s/project.yaml" % (project.name))
-                spider = Spider()
-                spider.config = config
-                spider._on_start()
-                self.spiders[project.name] = spider
-                self.taskqs[project.name] = build_queue("redis", qname="q_"+project.name)
-            except Exception as e:
-                logging.error("load spider!\n%s" % traceback.format_exc())
-                raise e
+        projects =  SpiderProject.load_projects() #query.filter_by(status=1).all()
         
-        print("task qs:", self.taskqs)
+        for project in projects:
+            self._load_project(project.name)
+            job = gevent.spawn(self.do_worker, project.name, self.spiders.get(project.name))
+            self.jobs['spiders'][project.name] = job
+            #job.start()
+            #job.join()
+            # try:
+            #     Spider = import_object("projects.%s.spider.Spider"% (project.name))
+            #     config = import_config("projects/%s/project.yaml" % (project.name))
+            #     spider = Spider()
+            #     spider.config = config
+            #     spider.quit = False
+            #     spider._on_start()
+            #     self.spiders[project.name] = spider
+            #     self.queues[project.name] = build_queue("redis", qname="q_"+project.name)
+            # except Exception as e:
+            #     logging.error("load spider!\n%s" % traceback.format_exc())
+            #     raise e
+        
+        print("task qs:", self.queues)
 
     def start(self):
-        gevent.joinall(self.jobs)
+        jobs = []
+        jobs.append(self.jobs['scheduler'])
+        jobs.append(self.jobs['command'])
+        jobs.append(self.jobs['loader'])
+        for k,v in self.jobs['spiders'].items():
+            jobs.append(v)
+        # gevent.joinall(jobs)
+
+    def do_command(self):
+        while True:
+            command = self.qin.get()
+            if command is None:
+                gevent.sleep(30)
+            if 'op' in command:
+                op = command.get('op')
+                target = command.get('target')  #project, task
+                
+                if target == 'project':
+                    if op == 'start':
+                        target_id = command.get('target_id')
+                        if target_id not in self.projects:
+                            self._load_project(target_id)
+                    if op == 'stop':
+                        target_id = command.get('target_id')
+                        if target_id  in self.projects:
+                            self._unload_project(target_id)
+
+    def _load_project(self, project):
+        try:
+            # sp = SpiderProject.query.filter_by(name=project, status=1).first()
+            prj = Config()
+            prj.name = project
+            prj.load_time = time.time()
+
+            Spider = import_object("projects.%s.spider.Spider"% (project))
+            config = import_config("projects/%s/project.yaml" % (project))
+            spider = Spider()
+            spider.config = config
+            spider.status = START
+            spider._on_start()
+            self.spiders[project] = spider
+            self.queues[project] = build_queue("redis", qname="q_"+project)
+            self.projects[project] = prj
+        except Exception as e:
+            logging.error("load spider!\n%s" % traceback.format_exc())
+            raise e
+
+    def _unload_project(self, project):
+        spider = self.spiders[project]
+        spider.status = -1
+        del self.queues[project]
+        del self.spiders[project]
+        del self.projects[project]
 
     def do_scheduler(self):
         now = time.time()
@@ -90,19 +149,23 @@ class EasyCrawler:
             # if 'callback' in process:
             #     task['callback'] = process.get('callback')
             task['process'] = process
-            inq = self.taskqs.get(s.project)
+            inq = self.queues.get(s.project)
             inq.put(task)
         gevent.sleep(2)
 
-    def do_task(self):
+    def do_loader(self):
         try:
            
             while True:
                 now = time.time()
-                for project in self.projects:
+                for k,project in self.projects.items():
                     if project.load_time > now:
                         continue
-                    taskq = self.taskqs.get(project.name)
+                    spider = self.spiders.get(project.name)
+                    if spider is None or spider.status != START:
+                        logging.warn("spider (%s) is not ready." % project.name)
+                        continue
+                    taskq = self.queues.get(project.name)
                     if taskq.qsize() <= 0:
                         new_tasks = self._load_tasks(project.name)
                         tasks_size = len(new_tasks)
@@ -126,9 +189,9 @@ class EasyCrawler:
 
         try:
             # task = self.qin.get()
-            taskq = self.taskqs.get(project_name)
+            taskq = self.queues.get(project_name)
             
-            while True:
+            while True and spider.status == START:
 
                 try:
                     task = taskq.get()
