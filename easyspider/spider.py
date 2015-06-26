@@ -8,8 +8,8 @@ import inspect
 from .cron import every
 from .utils import md5str
 
-from espider.db.model import SpiderScheduler, SpiderTask
-from espider.db import ScopedSession
+from .db.model import SpiderScheduler, SpiderTask
+from .db import ScopedSession
 
 INIT=0
 RUNNING=1

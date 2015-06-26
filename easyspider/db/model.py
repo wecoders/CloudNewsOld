@@ -27,7 +27,7 @@ class SpiderProject(Base):
     @classmethod
     def load_projects(cls):
         # db = Session()
-        projects = SpiderProject.query.filter(SpiderProject.name=='douban').all()
+        projects = SpiderProject.query.filter(SpiderProject.status==1).all()
         return projects
 
 class SpiderTask(Base):

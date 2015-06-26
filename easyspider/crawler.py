@@ -2,7 +2,8 @@
 #!/usr/bin/env python
 import gevent
 from gevent import monkey, queue
-
+from gevent.pool import Pool
+from greenlet import GreenletExit
 # monkey.patch_all()
 import os
 import json
@@ -29,15 +30,17 @@ class EasyCrawler:
         self.projects = {}
         self.jobs = {}
 
+        self.pool = Pool(1000)
         
         self.timeout = timeout
         self.loop_once = loop_once
         self.qin = build_queue("redis", qname="command_q")
         # self.qout = build_queue("redis") 
-        self.jobs['scheduler'] = gevent.spawn(self.do_scheduler)
-        self.jobs['command'] = gevent.spawn(self.do_command)
-        self.jobs['loader'] = gevent.spawn(self.do_loader)
-        self.jobs['spiders'] = {}
+        self.jobs['scheduler'] = self.pool.spawn(self.do_scheduler)
+        self.jobs['command'] = self.pool.spawn(self.do_command)
+        self.jobs['loader'] = self.pool.spawn(self.do_loader)
+        self.jobs['tasks'] = {}
+        
         self.load_spiders()
         print("projects:",self.projects)
         # for project in self.projects:
@@ -54,8 +57,8 @@ class EasyCrawler:
         
         for project in projects:
             self._load_project(project.name)
-            job = gevent.spawn(self.do_worker, project.name, self.spiders.get(project.name))
-            self.jobs['spiders'][project.name] = job
+            # job = gevent.spawn(self.do_worker, project.name, self.spiders.get(project.name))
+            
             #job.start()
             #job.join()
             # try:
@@ -73,37 +76,43 @@ class EasyCrawler:
         
         print("task qs:", self.queues)
 
+    def shutdown(self):
+        self.pool.kill()
+
     def start(self):
-        jobs = []
-        jobs.append(self.jobs['scheduler'])
-        jobs.append(self.jobs['command'])
-        jobs.append(self.jobs['loader'])
-        for k,v in self.jobs['spiders'].items():
-            jobs.append(v)
+        self.pool.join()
         # gevent.joinall(jobs)
 
     def do_command(self):
         while True:
             command = self.qin.get()
             if command is None:
-                gevent.sleep(30)
+                gevent.sleep(5)
+                continue
             if 'op' in command:
+
                 op = command.get('op')
-                target = command.get('target')  #project, task
-                
-                if target == 'project':
-                    if op == 'start':
-                        target_id = command.get('target_id')
-                        if target_id not in self.projects:
-                            self._load_project(target_id)
-                    if op == 'stop':
-                        target_id = command.get('target_id')
-                        if target_id  in self.projects:
-                            self._unload_project(target_id)
+                if op == 'exit':
+                    self.pool.kill()
+                else:
+                    target = command.get('target')  #project, task
+                    
+                    if target == 'project':
+                        if op == 'start':
+                            target_id = command.get('target_id')
+                            if target_id not in self.projects:
+                                self._load_project(target_id)
+                        if op == 'stop':
+                            target_id = command.get('target_id')
+                            if target_id  in self.projects:
+                                self._unload_project(target_id)
 
     def _load_project(self, project):
         try:
-            # sp = SpiderProject.query.filter_by(name=project, status=1).first()
+            dbproject = SpiderProject.query.filter_by(name=project).first()
+            if dbproject is None:
+                logging.error("project %s not exits, can't loading." % project)
+                return
             prj = Config()
             prj.name = project
             prj.load_time = time.time()
@@ -117,6 +126,9 @@ class EasyCrawler:
             self.spiders[project] = spider
             self.queues[project] = build_queue("redis", qname="q_"+project)
             self.projects[project] = prj
+            job = self.pool.spawn(self.do_worker, project, self.spiders.get(project))
+            self.jobs['tasks'][project] = job
+            self.pool.start(job)
         except Exception as e:
             logging.error("load spider!\n%s" % traceback.format_exc())
             raise e
@@ -124,6 +136,10 @@ class EasyCrawler:
     def _unload_project(self, project):
         spider = self.spiders[project]
         spider.status = -1
+        job = self.jobs['tasks'][project]
+        if job is not None:
+            self.pool.killone(job)
+            del self.jobs['tasks'][project]
         del self.queues[project]
         del self.spiders[project]
         del self.projects[project]
@@ -132,6 +148,9 @@ class EasyCrawler:
         now = time.time()
         schedulers = SpiderScheduler.query.filter(SpiderScheduler.next_time<=now).all()
         for s in schedulers:
+            if s.project not in self.projects:
+                continue
+
             if s.process is None or s.process == "":
                 process = {}
             else:
@@ -139,6 +158,7 @@ class EasyCrawler:
             task = {}
             task['type'] = 'scheduler'
             task['id'] = s.id
+
             task['project'] = s.project
             task['task_id'] = s.task_id
             task['url'] = s.url
@@ -205,14 +225,17 @@ class EasyCrawler:
                     print("do worker get a task", task) 
                     # print("project %s task: " % project, task)
                     self.do_fetch(project_name, spider, task)
+                except GreenletExit as ge:
+                    # logging.info("Worker %s ")
+                    pass
                 except:
                     logging.error("Worker error!\n%s" % traceback.format_exc())
 
-                
+        
                 
         finally:
             
-            logging.debug("Worker done, ==========================  job count: %s" % self.job_count)
+            logging.debug("Worker done, ==========================  job count: %s" % project_name)
 
     
     def do_fetch(self, project, spider, task):
