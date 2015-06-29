@@ -19,6 +19,7 @@ class SpiderProject(Base):
     __tablename__ = 'spider_project'
     id = Column(Integer, primary_key=True)
     name = Column(String)
+    queue_name = Column(String)
     status = Column(Integer)
     process = Column(String)
     create_at = Column(DateTime, default=datetime.datetime.now())

@@ -62,19 +62,39 @@ class EasySpider(object):
 
     def _on_start(self):
         print("_on_start cronjob", self._cronjobs)
+        tasks = []
         for job in self._cronjobs:
             crons  = getattr(job, '_crons', [])
             is_cronjob = getattr(job, '_is_cronjob', False)
+            project = self.config.get('project')
+            callback = job.__name__
             print("_on_start cronjob", job, crons)
+            url = u'data://%s/%s' % (self.config.get('project'), callback)
+            task_id = md5str(url.encode('utf-8'))
+
             scheduler_cfg = {}
-            scheduler_cfg['callback'] = job.__name__
-            scheduler_cfg['project'] = self.config.get('project')
-            # scheduler_cfg['spider'] = self.__name__
-            kwargs = {}
+            scheduler_cfg['url'] = url
+            scheduler_cfg['task_id'] = task_id
+            scheduler_cfg['callback'] = callback 
+            scheduler_cfg['project'] = project
             scheduler_cfg['crontab'] = crons
-            # scheduler_cfg['next_time'] = int(time.time())
-            print(scheduler_cfg)
+            logging.debug("project %s add scheduler, %s" % (project, json.dumps(scheduler_cfg)))
             self._add_scheduler(scheduler_cfg)
+            task_cfg = {}
+            task_cfg['project'] = project
+            task_cfg['url'] = url
+            task_cfg['task_id'] = task_id
+            task_cfg['process'] = {'callback':callback}
+            age = getattr(job, '_age', 0)
+            priority = getattr(job, '_priority', 0)
+            task_cfg['age'] = age
+            task_cfg['priority'] = priority
+            tasks.append(task_cfg)
+        if len(tasks)>0:
+            return None
+        else:
+            return None
+
 
         # if hasattr(self, 'on_start'):
         #     func = getattr(self, 'on_start')
@@ -103,10 +123,6 @@ class EasySpider(object):
 
 
 
-    # @every(cron=[])
-    # def on_start(self):
-        #self.fetch('some-url', url_type='index', callback=self.index_page)
-        # pass
 
     def _add_scheduler(self, scheduler_cfg):
         project = scheduler_cfg['project']
@@ -151,10 +167,10 @@ class EasySpider(object):
         next_time = now+int(age)
         priority = task_cfg.get('priority', 0)
         callback = task_cfg.get('callback', None)
-
+        logging.info("project %s add task, %s" % (project, json.dumps(task_cfg)))
         oldtask = SpiderTask.query.filter_by(task_id=task_id).first()
         if oldtask is not None:
-            if oldtask.status == 0 or oldtask.status == 1:
+            if oldtask.status == 0:
                 return
             # process = json.loads(oldtask.process)
             # age = process.get('age', SEVEN_DAYS)
@@ -164,6 +180,7 @@ class EasySpider(object):
                 db = ScopedSession()
                 db.add(oldtask)
                 db.commit()
+                return
             logging.info("project %s task %s exist" % (project, task_id))
             return
         task = SpiderTask()
@@ -192,12 +209,10 @@ class EasySpider(object):
         task_cfg['url'] = url
         if callback is not None:
             task_cfg['callback'] = getattr(callback, '__name__')
-            if hasattr(callback, '_cfg'):
-                cfg = callback._cfg
-                if 'age' in cfg:
-                    task_cfg['age'] = cfg['age']
-                if 'priority' in cfg:
-                    task_cfg['priority'] = cfg['priority']
+            if hasattr(callback, '_age'):
+                task_cfg['age'] = callback._age
+            if hasattr(callback, '_priority'):
+                task_cfg['priority'] = callback._priority
 
         self._add_task(task_cfg)
         

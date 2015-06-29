@@ -85,7 +85,7 @@ class Fetcher(object):
             result['code'] = 200
             result['content'] = html
             result['url'] = response.url
-            result['origin_url'] = url
+            result['old_url'] = url
             result['doc'] = PyQuery(html)
             logging.debug("Download end ======== [%s]" % url)
             return result

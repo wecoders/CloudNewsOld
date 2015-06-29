@@ -52,6 +52,16 @@ def every(crontab=[]):
         return func
     return wrapper
 
+def config(age=None, priority=None):
+    def wrapper(func):
+        if age is not None:
+            func._age = age
+        if priority is not None:
+            func._priority = priority
+
+        return func
+    return wrapper
+
 
 class CronConfig(object):
     def __init__(self, minute="*", hour="*", day="*", month="*", week=None):
