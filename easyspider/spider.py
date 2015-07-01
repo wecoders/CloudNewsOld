@@ -61,14 +61,14 @@ class EasySpider(object):
         # XWA`
 
     def _on_start(self):
-        print("_on_start cronjob", self._cronjobs)
+        # print("_on_start cronjob", self._cronjobs)
         tasks = []
         for job in self._cronjobs:
             crons  = getattr(job, '_crons', [])
             is_cronjob = getattr(job, '_is_cronjob', False)
             project = self.config.get('project')
             callback = job.__name__
-            print("_on_start cronjob", job, crons)
+            # print("_on_start cronjob", job, crons)
             url = u'data://%s/%s' % (self.config.get('project'), callback)
             task_id = md5str(url.encode('utf-8'))
 
@@ -129,19 +129,18 @@ class EasySpider(object):
         crontab = scheduler_cfg.get('crontab', [])
         callback = scheduler_cfg.get('callback', '')
         url = u'data://%s/%s' % (scheduler_cfg['project'], callback)
-        print(url, type(url))
+        # print(url, type(url))
         task_id = md5str(url.encode('utf-8'))
         next_time = int(time.time())
         
         old_scheduler = SpiderScheduler.query.filter_by(task_id=task_id).first()
         if old_scheduler is not None:
             process = json.dumps({'callback':callback, 'crontab':crontab})
-            if old_scheduler.process != process:
-                old_scheduler.process = process
-                old_scheduler.next_time = next_time
-                db = ScopedSession()
-                db.add(old_scheduler)
-                db.commit() 
+            old_scheduler.process = process
+            old_scheduler.next_time = next_time
+            db = ScopedSession()
+            db.add(old_scheduler)
+            db.commit() 
             return
         
         
@@ -193,7 +192,8 @@ class EasySpider(object):
         task.priority = priority
         task.status = 0
         task.result = None
-        task.process = json.dumps({'callback':callback}) #, 'age': task_cfg.get('age', 7*24*60*60)})
+        task.age = age
+        task.callback = callback #process = json.dumps({'callback':callback}) #, 'age': task_cfg.get('age', 7*24*60*60)})
         db = ScopedSession()
         db.add(task)
         db.commit()

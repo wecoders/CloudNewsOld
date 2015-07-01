@@ -47,8 +47,8 @@ class Fetcher(object):
         is_target = task.get('is_target')
 
         callback = None
-        if 'process' in task:
-            callback = getattr(spider, task.get('process').get('callback', None))
+        if 'callback' in task and task.get('callback', None) is not None:
+            callback = getattr(spider, task.get('callback', None))
         
         response = self._fetch(url, headers)
         if response.get('code') == 200 and callback is not None:

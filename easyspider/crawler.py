@@ -17,7 +17,7 @@ from .mq import build_queue
 from .fetcher import Fetcher
 from .config import import_config, Config
 from .db import Session, ScopedSession, SpiderProject, SpiderTask, SpiderScheduler,SpiderResult
-
+from .cron import CronJob
 
 OK=True
 START=1
@@ -46,7 +46,7 @@ class EasyCrawler:
         self.load_spiders()
         print("projects:",self.projects)
         self.queues['common'] = build_queue("redis", qname="common_q")
-        for i in xrange(workers_count):
+        for i in range(workers_count):
             project = Config()
             project.name = 'common'
             project.queue_name = 'common'
@@ -150,10 +150,13 @@ class EasyCrawler:
 
     def do_scheduler(self):
         while True:
-            now = time.time()
-            schedulers = SpiderScheduler.query.filter(SpiderScheduler.next_time<=now).all()
+            now = datetime.datetime.now()
+            nowts = time.time()
+            schedulers = SpiderScheduler.query.filter(SpiderScheduler.next_time<=nowts).all()
+            logging.debug("load schedulers length is %d, time:%d" % (len(schedulers), nowts))
             for s in schedulers:
                 if s.project not in self.projects:
+                    logging.debug("project [%s] doesn't started." % (s.project))
                     continue
 
                 if s.process is None or s.process == "":
@@ -171,13 +174,14 @@ class EasyCrawler:
                     crons = process.get('crontab')
                     cronjob = CronJob(crons)
                     next_time = cronjob.next(now)
+                    print("do scheduler", crons, now, nowts,next_time)
                     s.next_time = next_time
-                    s.last_time = now
+                    s.last_time = nowts
                     self.db.add(s)
 
-                # if 'callback' in process:
-                #     task['callback'] = process.get('callback')
-                task['process'] = process
+                if 'callback' in process:
+                    task['callback'] = process.get('callback')
+                
                 project = self.projects.get(s.project)
                 if project is not None:
                     inq = self.queues.get(project.queue_name)
@@ -267,8 +271,8 @@ class EasyCrawler:
         url = task.get('url')
         task_id = task.get('task_id')
         if url.startswith('data://'):
-            if 'process' in task:
-                callback = task.get('process').get('callback')
+            callback = task.get('callback')
+            if callback is not None:
                 callback_func = getattr(spider, callback)
                 if callback_func:
                     callback_func()
@@ -317,10 +321,11 @@ class EasyCrawler:
             new_task['task_id'] = task.task_id
             new_task['project'] = task.project
             new_task['url'] = task.url
-            if task.process is None or task.process == "":
-                new_task['process'] = {}
-            else:
-                new_task['process'] = json.loads(task.process)
+            new_task['callback'] = task.callback
+            # if task.process is None or task.process == "":
+            #     new_task['process'] = {}
+            # else:
+            #     new_task['process'] = json.loads(task.process)
             new_tasks.append(new_task)
         self.db.commit()
 

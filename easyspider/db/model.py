@@ -37,7 +37,7 @@ class SpiderTask(Base):
     project = Column(String)
     task_id = Column(String)
     url = Column(String)
-    process = Column(String)
+    callback = Column(String)
     priority = Column(Integer)
     #next_time = Column(Integer)
     last_time = Column(Integer)

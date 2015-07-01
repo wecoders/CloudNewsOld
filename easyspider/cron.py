@@ -4,6 +4,8 @@
 import sys
 import datetime
 import calendar
+# import timezone
+
 
 MINUTE=0
 HOUR=1
@@ -120,10 +122,21 @@ class CronConfig(object):
 
 class CronTab(object):
     """docstring for CronTab"""
-    def __init__(self, config):
+    def __init__(self, cron):
         super(CronTab, self).__init__()
-        
-        self.config = config
+        cols = cron.split(' ')
+        if len(cols) == 5:
+            
+            m = cols[0]
+            h = cols[1]
+            d = cols[2]
+            month = cols[3]
+            week = cols[4]
+            if week == "*":
+                week = None
+            cfg = CronConfig(m,h,d,month,week)
+            print(cfg)
+            self.config = cfg
     
     def array_min_pos(self, arr, val):
         
@@ -205,11 +218,11 @@ class CronTab(object):
             now = datetime.datetime.fromtimestamp(now)
         minute_go_next = hour_go_next = day_go_next = week_go_next = False
         future = now.replace(second=0, microsecond=0)
-
+        print(type(future), future)
         if not self.find_time(self.config.day, future.day):
             future, day_go_next = self.go_next_day(future)
             if day_go_next:
-                future = self.go_next_month(future)
+                future = self.add_next_month(future)
 
             future = future.replace(hour=self.config.hour[0], minute=self.config.minute[0])
             
@@ -220,6 +233,7 @@ class CronTab(object):
             future = future.replace(minute=self.config.minute[0])
         else:
             future, minute_go_next = self.go_next_minute(future)
+            # print("go next minute", future, minute_go_next)
             if minute_go_next:
                 future, hour_go_next = self.go_next_hour(future)
             if hour_go_next:
@@ -230,8 +244,10 @@ class CronTab(object):
 
                 else: #week
                     pass
-        delay = future - datetime.datetime(1970, 1, 1)
-        return future, delay.days * 86400 + delay.seconds + delay.microseconds / 1000000.
+        delay = future - datetime.datetime(1970, 1, 1) #, tzinfo=datetime.timezone.utc)
+        nextts = delay.days * 86400 + delay.seconds
+        # print("job next time: ",future, future.timestamp(), nextts)
+        return future, future.timestamp() # + delay.microseconds / 1000000.
 
 
 
@@ -248,9 +264,9 @@ class CronJob(object):
             return 0
         first_time = 2147483647
         for crontab in self.crontabs:
-            next_time = crontab.next(now)
-            if first_time < next_time:
-                first_time = next_time
+            next_time, next_timestamp = crontab.next(now)
+            if first_time > next_timestamp:
+                first_time = next_timestamp
 
         return first_time
         
