@@ -6,6 +6,7 @@ from gevent.pool import Pool
 from greenlet import GreenletExit
 # monkey.patch_all()
 import os
+import imp
 import json
 import time
 import logging
@@ -100,6 +101,28 @@ class EasyCrawler:
                             target_id = command.get('target_id')
                             if target_id  in self.projects:
                                 self._unload_project(target_id)
+                        if op == 'reload':
+                            target_id = command.get('target_id')
+                            if target_id  in self.projects:
+                                self._unload_project(target_id)
+                            self._load_project(target_id)
+
+
+
+    def _load_module(self, filepath):
+
+        class_name = None
+        expected_class = 'Spider'
+
+        mod_name,file_ext = os.path.splitext(os.path.split(filepath)[-1])
+
+        if file_ext.lower() == '.py':
+            py_mod = imp.load_source(mod_name, filepath)
+            
+        if hasattr(py_mod, expected_class):
+            class_name = getattr(py_mod, expected_class)
+
+        return class_name
 
     def _load_project(self, project):
         try:
@@ -115,9 +138,12 @@ class EasyCrawler:
             else:
                 newproject.queue_name = dbproject.queue_name
 
-            Spider = import_object("projects.%s.spider.Spider"% (project))
+            spider_cls = self._load_module("projects/%s/spider.py" % project)# import_object("projects.%s.spider.Spider"% (project))
+            if spider_cls is None:
+                logging.error("import module %s error.!" % project)
+                return
             config = import_config("projects/%s/project.yaml" % (project))
-            spider = Spider()
+            spider = spider_cls()
             spider.config = config
             spider.status = START
             new_tasks=spider._on_start()

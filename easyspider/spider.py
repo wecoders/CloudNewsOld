@@ -166,7 +166,7 @@ class EasySpider(object):
         next_time = now+int(age)
         priority = task_cfg.get('priority', 0)
         callback = task_cfg.get('callback', None)
-        logging.info("project %s add task, %s" % (project, json.dumps(task_cfg)))
+        
         oldtask = SpiderTask.query.filter_by(task_id=task_id).first()
         if oldtask is not None:
             if oldtask.status == 0:
@@ -182,6 +182,7 @@ class EasySpider(object):
                 return
             logging.info("project %s task %s exist" % (project, task_id))
             return
+        logging.info("project %s add task, %s" % (project, json.dumps(task_cfg)))
         task = SpiderTask()
         task.project = project
         task.task_id = task_id
