@@ -22,7 +22,9 @@ class SpiderProject(Base):
     queue_name = Column(String)
     status = Column(Integer)
     process = Column(String)
+    url = Column(String)
     create_at = Column(DateTime, default=datetime.datetime.now())
+    update_at = Column(DateTime, default=datetime.datetime.now())
     # query =  ScopedSession.query_property()
 
     @classmethod

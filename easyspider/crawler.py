@@ -38,14 +38,16 @@ class EasyCrawler:
         self.loop_once = loop_once
         self.qin = build_queue("redis", qname="command_q")
         # self.qout = build_queue("redis") 
-        self.jobs['scheduler'] = self.pool.spawn(self.do_scheduler)
-        self.jobs['command'] = self.pool.spawn(self.do_command)
-        self.jobs['loader'] = self.pool.spawn(self.do_loader)
+        
         self.jobs['tasks'] = {}
         self.jobs['common_tasks'] = []
         
         self.load_spiders()
-        print("projects:",self.projects)
+        # print("projects:",self.projects)
+        self.jobs['scheduler'] = self.pool.spawn(self.do_scheduler)
+        self.jobs['command'] = self.pool.spawn(self.do_command)
+        self.jobs['loader'] = self.pool.spawn(self.do_loader)
+        
         self.queues['common'] = build_queue("redis", qname="common_q")
         for i in range(workers_count):
             project = Config()
@@ -81,6 +83,7 @@ class EasyCrawler:
     def do_command(self):
         while True:
             command = self.qin.get()
+            logging.debug("get a command %s" % json.dumps(command))
             if command is None:
                 gevent.sleep(5)
                 continue
@@ -90,22 +93,17 @@ class EasyCrawler:
                 if op == 'exit':
                     self.pool.kill()
                 else:
-                    target = command.get('target')  #project, task
-                    
-                    if target == 'project':
+                    target_type = command.get('type')  #project, task
+                    target = command.get('target')
+                    logging.debug("get a %s command: %s/%s" % (op, target_type, target))
+                    if target_type == 'project':
                         if op == 'start':
-                            target_id = command.get('target_id')
-                            if target_id not in self.projects:
-                                self._load_project(target_id)
+                            self._load_project(target)
                         if op == 'stop':
-                            target_id = command.get('target_id')
-                            if target_id  in self.projects:
-                                self._unload_project(target_id)
+                            self._unload_project(target)
                         if op == 'reload':
-                            target_id = command.get('target_id')
-                            if target_id  in self.projects:
-                                self._unload_project(target_id)
-                            self._load_project(target_id)
+                            self._unload_project(target)
+                            self._load_project(target)
 
 
 
@@ -125,6 +123,9 @@ class EasyCrawler:
         return class_name
 
     def _load_project(self, project):
+        logging.debug("load project %s" % project)
+        if project in self.projects:
+            return
         try:
             dbproject = SpiderProject.query.filter_by(name=project).first()
             if dbproject is None:
@@ -142,6 +143,7 @@ class EasyCrawler:
             if spider_cls is None:
                 logging.error("import module %s error.!" % project)
                 return
+            logging.debug("import spider %s" % project)
             config = import_config("projects/%s/project.yaml" % (project))
             spider = spider_cls()
             spider.config = config
@@ -163,14 +165,20 @@ class EasyCrawler:
             raise e
 
     def _unload_project(self, project):
+        logging.debug("unload project %s" % (project))
+        old_project = self.projects.get(project)
+        if old_project is None:
+            return
+        
+        if old_project.queue_name != 'common':
+            job = self.jobs['tasks'].get(project)
+            if job is not None:
+                self.pool.killone(job, block=False)
+                del self.jobs['tasks'][project]
+            if project in self.queues:
+                del self.queues[project]
         spider = self.spiders.get(project)
         spider.status = STOP
-        job = self.jobs['tasks'].get(project)
-        if job is not None:
-            self.pool.killone(job)
-            del self.jobs['tasks'][project]
-        if project in self.queues:
-            del self.queues[project]
         del self.spiders[project]
         del self.projects[project]
 
@@ -226,20 +234,23 @@ class EasyCrawler:
                     spider = self.spiders.get(project.name)
                     if spider is None or spider.status != START:
                         logging.warn("spider (%s) is not ready." % project.name)
+                        print(spider, spider.status)
                         continue
                     taskq = self.queues.get(project.queue_name)
-                    if taskq.qsize() <= 0:
-                        new_tasks = self._load_tasks(project.name)
-                        tasks_size = len(new_tasks)
-                        if tasks_size <= 0:
-                            logging.info('project [%s] load no task' % project.name)
-                            #project.load_time = now + 10*1000 
-                            continue
-                        else:
-                            logging.info('project [%s] load %d tasks' % (project.name, tasks_size))
-                        for task in new_tasks:
-                            # print("put in queue", json.dumps(task))
-                            taskq.put(task)
+                    if (project.queue_name != 'common' and taskq.qsize() > 0) or (project.queue_name=='common' and taskq.qsize() >= 1000):
+                        continue
+                    
+                    new_tasks = self._load_tasks(project.name)
+                    tasks_size = len(new_tasks)
+                    if tasks_size <= 0:
+                        logging.info('project [%s] load no task' % project.name)
+                        #project.load_time = now + 10*1000 
+                        continue
+                    else:
+                        logging.info('project [%s] load %d tasks' % (project.name, tasks_size))
+                    for task in new_tasks:
+                        # print("put in queue", json.dumps(task))
+                        taskq.put(task)
 
                 else:
                     gevent.sleep(2)
@@ -258,14 +269,14 @@ class EasyCrawler:
                 try:
                     task = taskq.get()
                     if task == StopIteration or task == '':
-                        ogging.info("worker [%s] get none task, exit do worker" % (project.name))
+                        logging.info("worker [%s] get none task, exit do worker" % (project.name))
                         break
                     if task is None:
                         gevent.sleep(2)
                         logging.info("worker [%s] get no task, sleep 2 seconds" % (project.name))
                         continue
 
-                    print("do worker get a task", task) 
+                    logging.info("do worker get a task", task) 
                     project_name = task.get('project')
                     if project_name is None:
                         logging.error("worker get a task from queue [%s] has no project, ignore. %s" % (project.queue_name, json.dumps(task)))
@@ -324,6 +335,8 @@ class EasyCrawler:
                 sr.create_at = datetime.datetime.now()
                 self.db.add(sr)
             st = SpiderTask.query.filter_by(task_id=task_id).first()
+            if st is None:
+                return
             st.status = result_code
             st.last_time = time.time()
             self.db.add(st)

@@ -13,6 +13,8 @@ class RedisQueue(object):
         self.qname = qname
         self.redis = redis.StrictRedis(host=host, port=port, db=db)
         
+    def close(self):
+        self.redis.close()
         
     def qsize(self):
         return self.redis.llen(self.qname) 

@@ -1,18 +1,23 @@
 drop table spider_project;
+
+drop table spider_task;
+
+
+
 CREATE TABLE `spider_project` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL,
   `queue_name` varchar(30) NULL,
   `status` int(11) NOT NULL DEFAULT '0',
   `process` text NOT NULL,
+  `url` varchar(200) NOT NULL,
   `create_at` datetime DEFAULT NULL,
+  `update_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_name` (`name`),
   KEY `ix_status` (`status`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
-
-drop table spider_task;
 
 
 CREATE TABLE `spider_task` (

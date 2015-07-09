@@ -55,6 +55,7 @@ class EasySpider(object):
         self.project = 'unknown'
         self.config = {}
         self._tasks = {}
+        self.status = 0
         # self._cronjobs = []
         
         # self.site_id = site.settings.site_id
@@ -203,6 +204,8 @@ class EasySpider(object):
 
 
     def fetch(self, url, callback=None, **kwargs):
+        # if callback is not None:
+            # logging.debug("url:%s callback:%s" % (url, getattr(callback, '__name__')))
         task_id = md5str(url)
         task_cfg = {}
         task_cfg['task_id'] = task_id
