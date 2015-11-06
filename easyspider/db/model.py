@@ -12,6 +12,10 @@ from .mysql import Session, ScopedSession
 
 class BaseClass(object):
     query =  ScopedSession.query_property()
+    def commit(self):
+        db = ScopedSession()
+        db.add(self)
+        db.commit()        
 
 Base = declarative_base(cls=BaseClass)
 
@@ -29,7 +33,6 @@ class SpiderProject(Base):
 
     @classmethod
     def load_projects(cls):
-        # db = Session()
         projects = SpiderProject.query.filter(SpiderProject.status==1).all()
         return projects
 

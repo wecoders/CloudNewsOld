@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
-
+import os
+import imp
 import hashlib
 
 class TestClass(object):
@@ -60,3 +61,16 @@ def import_object(name, arg=None):
     print(name, o, obj, o())
     return o
 
+def load_module(filepath):
+    class_name = None
+    expected_class = 'Spider'
+
+    mod_name,file_ext = os.path.splitext(os.path.split(filepath)[-1])
+    py_mod = None
+    if file_ext.lower() == '.py':
+        py_mod = imp.load_source(mod_name, filepath)
+        
+    if hasattr(py_mod, expected_class):
+        class_name = getattr(py_mod, expected_class)
+
+    return class_name

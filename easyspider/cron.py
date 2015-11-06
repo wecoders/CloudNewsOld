@@ -50,7 +50,7 @@ def every(crontab=[]):
 
                 # cfg = CronConfig(m,h,d,month,week)
                 # func._crons.append(cfg)
-        print("every wrapper ", func, func._is_cronjob, func._crons)
+        # print("every wrapper ", func, func._is_cronjob, func._crons)
         return func
     return wrapper
 
@@ -135,7 +135,7 @@ class CronTab(object):
             if week == "*":
                 week = None
             cfg = CronConfig(m,h,d,month,week)
-            print(cfg)
+            # print(cfg)
             self.config = cfg
     
     def array_min_pos(self, arr, val):
@@ -157,7 +157,7 @@ class CronTab(object):
         except ValueError:
             if len(arr) == 0:
                 # go_next = True
-                print(arr, val, 0, True)
+                # print(arr, val, 0, True)
                 return (0,True)
             pos = -1
 
@@ -218,7 +218,7 @@ class CronTab(object):
             now = datetime.datetime.fromtimestamp(now)
         minute_go_next = hour_go_next = day_go_next = week_go_next = False
         future = now.replace(second=0, microsecond=0)
-        print(type(future), future)
+        # print(type(future), future)
         if not self.find_time(self.config.day, future.day):
             future, day_go_next = self.go_next_day(future)
             if day_go_next:

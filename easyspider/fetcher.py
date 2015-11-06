@@ -16,7 +16,7 @@ def monkey_patch():
         #if apparent_encoding is None:
             
         apparent_encoding = 'UTF-8'
-        print("encoding,",self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content))
+        # print("encoding,",self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content))
         # logging.debug("encoding %s, %s, %s" % (self.encoding,apparent_encoding,requests.utils.get_encodings_from_content(_content)))
         if self.encoding == 'ISO-8859-1': # or self.encoding == 'gbk':
             encodings = requests.utils.get_encodings_from_content(_content)
@@ -24,7 +24,7 @@ def monkey_patch():
             if encodings and (encodings[0] == 'UTF-8' or encodings[0] == 'UTF8' or encodings[0] == 'GB2312' or encodings[0] == 'GBK' or encodings[0] == 'gbk'):
                 self.encoding = encodings[0]
             else:
-                logging.debug("apparent_encoding: "+apparent_encoding)
+                # logging.debug("apparent_encoding: "+apparent_encoding)
                 self.encoding = apparent_encoding
             _content = _content.decode(self.encoding, 'replace').encode('utf8', 'replace')
             self._content = _content
@@ -42,7 +42,7 @@ class Fetcher(object):
         
         
     def fetch(self, spider, task, headers={}):
-        logging.debug("fetch ====== %s" % task)
+        #logging.debug("fetch ====== %s" % task)
         url = task.get('url')
         is_target = task.get('is_target')
 
@@ -65,13 +65,13 @@ class Fetcher(object):
             #update task status=response.get('code') where id=task['id']
         return response
 
-    def _fetch(self, url, headers={}, timeout=60, proxies=None):
+    def _fetch(self, url, headers={}, timeout=20, proxies=None):
         logging.debug("Download start ======== [%s], %s" % (url,type(url)))
 
         try:
             result = Config()
             response = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
-            logging.debug("requests response encoding =============== ************* %s" % response.encoding)
+            # logging.debug("requests response encoding =============== ************* %s" % response.encoding)
             if response.status_code != requests.codes.ok:
                 return dict(code=response.status_code)
 
@@ -82,12 +82,12 @@ class Fetcher(object):
                 result['set-cookie'] = cookies
             content_type = response.headers.get('content-type')
             result['content-type'] = content_type
-            result['code'] = 200
+            result['code'] = response.status_code
             result['content'] = html
             result['url'] = response.url
             result['old_url'] = url
             result['doc'] = PyQuery(html)
-            logging.debug("Download end ======== [%s]" % url)
+            # logging.debug("Download end ======== [%s] %d" % (url, response.status_code))
             return result
 
         except Exception as e:

@@ -4,6 +4,7 @@
 import time
 import redis
 import json
+import logging
 
 class RedisQueue(object):
     
@@ -13,8 +14,11 @@ class RedisQueue(object):
         self.qname = qname
         self.redis = redis.StrictRedis(host=host, port=port, db=db)
         
+    def delete(self):
+        self.redis.delete(self.qname)
+
     def close(self):
-        self.redis.close()
+        self.redis.connection_pool.disconnect()
         
     def qsize(self):
         return self.redis.llen(self.qname) 
@@ -26,18 +30,18 @@ class RedisQueue(object):
             return False
 
     def put(self, obj):
-        print("queue put",self.qname, json.dumps(obj))
+        #logging.debug("queue put %s, %s" % (self.qname, json.dumps(obj)) )
         return self.redis.rpush(self.qname, json.dumps(obj))
 
     def put_first(self, obj):
-        print("queue put first", self.qname, json.dumps(obj))
+        # print("queue put first", self.qname, json.dumps(obj))
         return self.redis.lpush(self.qname, json.dumps(obj))
 
     def get(self):
         ret = self.redis.lpop(self.qname)
         if ret is None:
             return None
-        print("queue get", self.qname, type(ret), ret)
+        # print("queue get", self.qname, type(ret), ret)
         return json.loads(ret.decode(encoding='UTF-8'))
 
 Queue = RedisQueue

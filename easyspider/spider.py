@@ -9,13 +9,13 @@ from .cron import every
 from .utils import md5str
 
 from .db.model import SpiderScheduler, SpiderTask
-from .db import ScopedSession
+from .db import Session, ScopedSession
 
 INIT=0
 RUNNING=1
 OK=200
 SERVER_ERROR=500
-SEVEN_DAYS=7*24*60*60
+SEVEN_DAYS=7*24*60
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass."""
@@ -36,7 +36,7 @@ def add_metaclass(metaclass):
 class BaseSpiderMeta(type):
 
     def __new__(cls, name, bases, attrs):
-        print("meta attrs", attrs)
+        # print("meta attrs", attrs)
         newcls = type.__new__(cls, name, bases, attrs)
         newcls._cronjobs = []
 
@@ -45,7 +45,7 @@ class BaseSpiderMeta(type):
                 newcls._cronjobs.append(each)
                 print("cronjob", each)
         # newcls._min_tick = min_tick
-        print("cronjobs", newcls._cronjobs)
+        # print("cronjobs", newcls._cronjobs)
         return newcls
 
 
@@ -70,27 +70,27 @@ class EasySpider(object):
             project = self.config.get('project')
             callback = job.__name__
             # print("_on_start cronjob", job, crons)
-            url = u'data://%s/%s' % (self.config.get('project'), callback)
-            task_id = md5str(url.encode('utf-8'))
+            url = u'data://%s' % (callback)
+            task_id = md5str("%s/%s" % (project, url.encode('utf-8')) )
 
             scheduler_cfg = {}
             scheduler_cfg['url'] = url
             scheduler_cfg['task_id'] = task_id
-            scheduler_cfg['callback'] = callback 
+            scheduler_cfg['callback'] = None 
             scheduler_cfg['project'] = project
             scheduler_cfg['crontab'] = crons
             logging.debug("project %s add scheduler, %s" % (project, json.dumps(scheduler_cfg)))
             self._add_scheduler(scheduler_cfg)
-            task_cfg = {}
-            task_cfg['project'] = project
-            task_cfg['url'] = url
-            task_cfg['task_id'] = task_id
-            task_cfg['process'] = {'callback':callback}
-            age = getattr(job, '_age', 0)
-            priority = getattr(job, '_priority', 0)
-            task_cfg['age'] = age
-            task_cfg['priority'] = priority
-            tasks.append(task_cfg)
+            # task_cfg = {}
+            # task_cfg['project'] = project
+            # task_cfg['url'] = url
+            # task_cfg['task_id'] = task_id
+            # task_cfg['process'] = {'callback':callback}
+            # age = getattr(job, '_age', 0)
+            # priority = getattr(job, '_priority', 0)
+            # task_cfg['age'] = age
+            # task_cfg['priority'] = priority
+            # tasks.append(task_cfg)
         if len(tasks)>0:
             return None
         else:
@@ -129,19 +129,21 @@ class EasySpider(object):
         project = scheduler_cfg['project']
         crontab = scheduler_cfg.get('crontab', [])
         callback = scheduler_cfg.get('callback', '')
-        url = u'data://%s/%s' % (scheduler_cfg['project'], callback)
+        # url = u'data://%s/%s' % (scheduler_cfg['project'], callback)
+        url = scheduler_cfg.get('url')
         # print(url, type(url))
-        task_id = md5str(url.encode('utf-8'))
+        task_id = scheduler_cfg.get('task_id')# md5str(url.encode('utf-8'))
         next_time = int(time.time())
-        
-        old_scheduler = SpiderScheduler.query.filter_by(task_id=task_id).first()
+        db = Session()
+        # print(db)
+        old_scheduler = db.query(SpiderScheduler).filter_by(task_id=task_id).first()
         if old_scheduler is not None:
             process = json.dumps({'callback':callback, 'crontab':crontab})
             old_scheduler.process = process
             old_scheduler.next_time = next_time
-            db = ScopedSession()
             db.add(old_scheduler)
-            db.commit() 
+            db.commit()
+            db.close()
             return
         
         
@@ -152,9 +154,10 @@ class EasySpider(object):
         scheduler.process = json.dumps({'callback':scheduler_cfg['callback'], 'crontab':crontab})
         scheduler.next_time = next_time
         scheduler.last_time = next_time
-        db = ScopedSession()
+        
         db.add(scheduler)
-        db.commit() 
+        db.commit()
+        db.close()
 
 
     def _add_task(self, task_cfg):
@@ -163,14 +166,15 @@ class EasySpider(object):
         url = task_cfg['url']
         # crontab = json.dumps(task_cfg.get('crontab', '[]'))
         now = int(time.time())
-        age = int(task_cfg.get('age', SEVEN_DAYS)) #10years
-        next_time = now+int(age)
+        age = 60 * int(task_cfg.get('age', SEVEN_DAYS)) #10years
+        next_time = now+age
         priority = task_cfg.get('priority', 0)
         callback = task_cfg.get('callback', None)
         
         oldtask = SpiderTask.query.filter_by(task_id=task_id).first()
         if oldtask is not None:
             if oldtask.status == 0:
+                logging.debug("project %s task %s exist, and status is init." % (project, task_id))
                 return
             # process = json.loads(oldtask.process)
             # age = process.get('age', SEVEN_DAYS)
@@ -181,9 +185,9 @@ class EasySpider(object):
                 db.add(oldtask)
                 db.commit()
                 return
-            logging.info("project %s task %s exist" % (project, task_id))
+            #logging.debug("project %s task %s exist" % (project, task_id))
             return
-        logging.info("project %s add task, %s" % (project, json.dumps(task_cfg)))
+        logging.debug("project %s add task, %s" % (project, json.dumps(task_cfg)))
         task = SpiderTask()
         task.project = project
         task.task_id = task_id
@@ -204,8 +208,8 @@ class EasySpider(object):
 
 
     def fetch(self, url, callback=None, **kwargs):
-        # if callback is not None:
-            # logging.debug("url:%s callback:%s" % (url, getattr(callback, '__name__')))
+        if callback is not None:
+            logging.debug("url:%s callback:%s" % (url, getattr(callback, '__name__')))
         task_id = md5str(url)
         task_cfg = {}
         task_cfg['task_id'] = task_id
@@ -219,6 +223,7 @@ class EasySpider(object):
                 task_cfg['priority'] = callback._priority
 
         self._add_task(task_cfg)
+        return task_cfg
         
     def _run_task(self, response, task_cfg):
         func = getattr(self, task_cfg.get('callback', '__call__'))
@@ -229,5 +234,8 @@ class EasySpider(object):
         return function(*arguments[:len(args) - 1])
 
 
+    def on_result(self, result):
+        url = result.get('url')
+        content = result.get('content')
 
 

@@ -1,7 +1,10 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+codernews
+*.log
+*.swp
 *.py[cod]
-
+*.txt
 # C extensions
 *.so
 

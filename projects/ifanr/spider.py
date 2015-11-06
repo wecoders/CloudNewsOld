@@ -10,13 +10,13 @@ class Spider(EasySpider):
     def on_start(self):
         self.fetch("http://www.ifanr.com/", callback=self.on_index_page)
 
-    @config(age=5)
+    @config(age=10*60)
     def on_index_page(self, response):
         for each in response.doc('a[href^="http://www.ifanr.com"]').items():
-            if re.match('http://www.ifanr.com/\d+', each.attr.href):
+            if re.match('http://www.ifanr.com/\d+$', each.attr.href):
                 self.fetch(each.attr.href, callback=self.on_detail_page)
             
     @config(priority=9)
     def on_detail_page(self, response):
-        return {"title": response.doc('h1').text()}
+        return {"title": response.doc('h1').text(), "url": response.url}
 
